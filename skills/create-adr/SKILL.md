@@ -51,6 +51,8 @@ Examples:
 ### 6. Write ADR
 Use the template from `.architecture/templates/adr-template.md`:
 
+**Frontmatter** (when the template opens with `---`): set `status: proposed` and `date:` to today's date (YYYY-MM-DD), and list the people involved under `decision-makers`. Never leave the `YYYY-MM-DD` placeholder. Frontmatter `status` is canonical and lowercase; if you keep the `## Status` section, write the same status there (`Proposed`). The `create_adr` MCP tool fills `status` and `date` the same way.
+
 **Core sections**:
 - Status, Context, Decision Drivers, Decision, Consequences
 - Implementation, Alternatives Considered, Validation, References

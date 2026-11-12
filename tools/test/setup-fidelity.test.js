@@ -246,6 +246,20 @@ describe('renderAdrFromTemplate', () => {
     assert.ok(validateAdr('ADR-003-t.md', out).valid);
   });
 
+  it('fills frontmatter in a CRLF template and keeps its line endings', async () => {
+    const shipped = await readFile(path.resolve(import.meta.dirname, '../../.architecture/templates/adr-template.md'), 'utf8');
+    const crlf = shipped.replace(/\r?\n/g, '\r\n');
+    const out = renderAdrFromTemplate(crlf, fields);
+    assert.ok(out.startsWith('---\r\nstatus: proposed\r\ndate: 2026-01-01\r\n'), `got: ${JSON.stringify(out.slice(0, 60))}`);
+    assert.doesNotMatch(out, /YYYY-MM-DD/);
+  });
+
+  it('keeps CRLF frontmatter first when a customized template has no canonical H1', () => {
+    const custom = '---\r\nstatus: proposed\r\ndate: YYYY-MM-DD\r\n---\r\n\r\n## Status\r\n\r\n[x]\r\n';
+    const out = renderAdrFromTemplate(custom, fields);
+    assert.ok(out.startsWith('---\r\nstatus: proposed\r\ndate: 2026-01-01\r\n---\r\n\r\n# ADR-003: T\r\n'), `got: ${JSON.stringify(out.slice(0, 80))}`);
+  });
+
   it('leaves a template without frontmatter without frontmatter', () => {
     const out = renderAdrFromTemplate(tpl, fields);
     assert.ok(out.startsWith('# ADR-003: T\n'), 'no frontmatter is invented');

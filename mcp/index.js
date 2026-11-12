@@ -1311,18 +1311,24 @@ export function renderAdrFromTemplate(template, { number, title, context, decisi
 // (decision-makers) stay as prompts for the author. If the H1 was prepended
 // because a customized template lacks the canonical one, it is moved below the
 // frontmatter: frontmatter is only frontmatter on the file's first line.
+// CRLF templates (Windows checkouts with autocrlf) are matched too, and keep
+// their line endings.
 function fillFrontmatter(text, heading, date) {
   const prefix = `${heading}\n\n`;
-  const prepended = text.startsWith(`${prefix}---\n`);
+  const prepended = /^---\r?\n/.test(text.slice(prefix.length)) && text.startsWith(prefix);
   const body = prepended ? text.slice(prefix.length) : text;
-  const match = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(body);
+  const match = /^---(\r?\n)([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(body);
   if (!match) return text;
-  const fields = match[1]
+  const eol = match[1];
+  // In JS, `.` and multiline `$` both stop at \r, so a CRLF line's \r survives.
+  const fields = match[2]
     .replace(/^status:.*$/m, () => 'status: proposed')
     .replace(/^date:.*$/m, () => `date: ${date}`);
   const rest = body.slice(match[0].length);
-  const head = `---\n${fields}\n---\n`;
-  return prepended ? `${head}\n${heading}\n${rest.startsWith('\n') ? '' : '\n'}${rest}` : `${head}${rest}`;
+  const head = `---${eol}${fields}${eol}---${eol}`;
+  if (!prepended) return `${head}${rest}`;
+  const gap = /^\r?\n/.test(rest) ? '' : eol;
+  return `${head}${eol}${heading}${eol}${gap}${rest}`;
 }
 
 function appendSection(text, name, body) {
