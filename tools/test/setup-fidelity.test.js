@@ -221,4 +221,33 @@ describe('renderAdrFromTemplate', () => {
     const out = renderAdrFromTemplate('## Status\n\n[x]\n\n## Context\n\n[c]\n\n## Decision\n\n[d]\n\n## Consequences\n\n[q]\n', fields);
     assert.ok(out.startsWith('# ADR-003: T\n\n## Status'), `got: ${JSON.stringify(out.slice(0, 40))}`);
   });
+
+  it('fills MADR frontmatter status and date from the shipped template', async () => {
+    const shipped = await readFile(path.resolve(import.meta.dirname, '../../.architecture/templates/adr-template.md'), 'utf8');
+    const out = renderAdrFromTemplate(shipped, fields);
+    assert.ok(out.startsWith('---\nstatus: proposed\ndate: 2026-01-01\n'), `got: ${JSON.stringify(out.slice(0, 60))}`);
+    assert.doesNotMatch(out, /YYYY-MM-DD/, 'no date placeholder survives');
+    assert.match(out, /^decision-makers: \[list everyone/m, 'author-only fields stay as prompts');
+    assert.match(out, /^# ADR-003: T$/m);
+    assert.ok(validateAdr('ADR-003-t.md', out).valid, 'rendered output must satisfy the validator');
+  });
+
+  it('syncs a customized frontmatter status to the Proposed Status section', () => {
+    const custom = '---\nstatus: draft\ndate: 1999-01-01\nowner: me\n---\n\n# ADR-XXX: [Title]\n\n## Status\n\n[x]\n\n## Context\n\n[c]\n\n## Decision\n\n[d]\n\n## Consequences\n\n[q]\n';
+    const out = renderAdrFromTemplate(custom, fields);
+    assert.ok(out.startsWith('---\nstatus: proposed\ndate: 2026-01-01\nowner: me\n---\n\n# ADR-003: T\n'), `got: ${JSON.stringify(out.slice(0, 80))}`);
+    assert.ok(validateAdr('ADR-003-t.md', out).valid, 'frontmatter and Status section must agree');
+  });
+
+  it('keeps frontmatter first when a customized template has no canonical H1', () => {
+    const custom = '---\nstatus: proposed\ndate: YYYY-MM-DD\n---\n\n## Status\n\n[x]\n\n## Context\n\n[c]\n\n## Decision\n\n[d]\n\n## Consequences\n\n[q]\n';
+    const out = renderAdrFromTemplate(custom, fields);
+    assert.ok(out.startsWith('---\nstatus: proposed\ndate: 2026-01-01\n---\n\n# ADR-003: T\n\n## Status'), `got: ${JSON.stringify(out.slice(0, 80))}`);
+    assert.ok(validateAdr('ADR-003-t.md', out).valid);
+  });
+
+  it('leaves a template without frontmatter without frontmatter', () => {
+    const out = renderAdrFromTemplate(tpl, fields);
+    assert.ok(out.startsWith('# ADR-003: T\n'), 'no frontmatter is invented');
+  });
 });

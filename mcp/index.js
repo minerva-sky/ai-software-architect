@@ -1287,7 +1287,9 @@ The AI Software Architect framework has been configured with:
 // placeholders as prompts for the author. The installed template may be
 // customized: if it lacks one of the four sections a field targets (or the
 // canonical H1), that section is appended so the caller's text is never dropped
-// silently — validate-adr requires all four anyway. Exported for tests.
+// silently — validate-adr requires all four anyway. When the template opens
+// with MADR frontmatter, its `status` and `date` are filled to match the Status
+// section (see fillFrontmatter). Exported for tests.
 export function renderAdrFromTemplate(template, { number, title, context, decision, consequences, date }) {
   const paddedNumber = String(number).padStart(3, '0');
   const heading = `# ADR-${paddedNumber}: ${title}`;
@@ -1298,7 +1300,29 @@ export function renderAdrFromTemplate(template, { number, title, context, decisi
   out = fillSectionPlaceholder(out, 'Context', context);
   out = fillSectionPlaceholder(out, 'Decision', decision);
   out = fillSectionPlaceholder(out, 'Consequences', consequences);
+  out = fillFrontmatter(out, heading, date);
   return out;
+}
+
+// The template opens with MADR 4.0 frontmatter, where `status` is canonical and
+// `date` ships as the literal "YYYY-MM-DD". Fill both so the rendered ADR's
+// metadata agrees with its Status section. Only keys already present are
+// touched; a template without frontmatter is left as it was, and other keys
+// (decision-makers) stay as prompts for the author. If the H1 was prepended
+// because a customized template lacks the canonical one, it is moved below the
+// frontmatter: frontmatter is only frontmatter on the file's first line.
+function fillFrontmatter(text, heading, date) {
+  const prefix = `${heading}\n\n`;
+  const prepended = text.startsWith(`${prefix}---\n`);
+  const body = prepended ? text.slice(prefix.length) : text;
+  const match = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(body);
+  if (!match) return text;
+  const fields = match[1]
+    .replace(/^status:.*$/m, () => 'status: proposed')
+    .replace(/^date:.*$/m, () => `date: ${date}`);
+  const rest = body.slice(match[0].length);
+  const head = `---\n${fields}\n---\n`;
+  return prepended ? `${head}\n${heading}\n${rest.startsWith('\n') ? '' : '\n'}${rest}` : `${head}${rest}`;
 }
 
 function appendSection(text, name, body) {
